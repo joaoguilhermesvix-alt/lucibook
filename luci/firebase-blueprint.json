@@ -1,0 +1,81 @@
+{
+  "entities": {
+    "Client": {
+      "title": "Client",
+      "description": "A client of the studio",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "name": { "type": "string" },
+        "phone": { "type": "string" },
+        "notes": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "name"]
+    },
+    "Appointment": {
+      "title": "Appointment",
+      "description": "A scheduled appointment",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "clientName": { "type": "string" },
+        "serviceName": { "type": "string" },
+        "price": { "type": "number" },
+        "date": { "type": "string" },
+        "startTime": { "type": "string" },
+        "endTime": { "type": "string" },
+        "status": { "type": "string", "enum": ["agendado", "concluido"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "clientName", "serviceName", "date", "startTime", "endTime", "status"]
+    },
+    "Service": {
+      "title": "Service",
+      "description": "A service offered by the studio",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "name": { "type": "string" },
+        "price": { "type": "number" },
+        "duration": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "name", "price"]
+    },
+    "Transaction": {
+      "title": "Transaction",
+      "description": "A financial transaction",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "clientName": { "type": "string" },
+        "serviceName": { "type": "string" },
+        "amount": { "type": "number" },
+        "status": { "type": "string", "enum": ["recebido", "pendente"] },
+        "paymentMethod": { "type": "string" },
+        "date": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "amount", "status", "date"]
+    }
+  },
+  "firestore": {
+    "/clients/{clientId}": {
+      "schema": { "$ref": "#/entities/Client" },
+      "description": "Clients collection"
+    },
+    "/appointments/{appointmentId}": {
+      "schema": { "$ref": "#/entities/Appointment" },
+      "description": "Appointments collection"
+    },
+    "/services/{serviceId}": {
+      "schema": { "$ref": "#/entities/Service" },
+      "description": "Services collection"
+    },
+    "/transactions/{transactionId}": {
+      "schema": { "$ref": "#/entities/Transaction" },
+      "description": "Transactions collection"
+    }
+  }
+}
