@@ -99,15 +99,15 @@ export default function Layout() {
         </AnimatePresence>
       </main>
 
-      {/* iOS-Style Bottom Tab Bar */}
-      <nav className="md:hidden fixed bottom-0 inset-x-0 bg-white/75 backdrop-blur-[24px] border-t border-gray-200/50 z-50 px-2 py-2 pb-[env(safe-area-inset-bottom,20px)] shadow-[0_-10px_40px_rgba(0,0,0,0.03)]">
-        <div className="flex justify-around items-center w-full max-w-md mx-auto overflow-x-auto no-scrollbar gap-1">
+      {/* iOS-Style Bottom Tab Bar - Pill Shape */}
+      <nav className="md:hidden fixed bottom-6 inset-x-4 max-w-sm mx-auto bg-white/85 backdrop-blur-[24px] border border-gray-100/50 z-50 px-2 py-2 rounded-full shadow-[0_8px_32px_rgba(0,0,0,0.08)]">
+        <div className="flex justify-around items-center w-full no-scrollbar gap-1 relative">
           {navItems.map((item) => (
             <NavLink
               key={item.to}
               to={item.to}
               className={({ isActive }) =>
-                `relative flex flex-col items-center justify-center w-14 h-14 rounded-2xl transition-all duration-300 shrink-0 ${
+                `relative flex flex-col items-center justify-center h-12 flex-1 rounded-full transition-all duration-300 shrink-0 ${
                   isActive ? "text-[var(--accent)]" : "text-gray-400"
                 }`
               }
@@ -115,24 +115,26 @@ export default function Layout() {
               {({ isActive }) => (
                 <motion.div
                   whileTap={{ scale: 0.85 }}
-                  className="flex flex-col items-center gap-1 w-full"
+                  className="flex flex-col items-center justify-center gap-0.5 w-full h-full"
                 >
                   {isActive && (
                     <motion.div
                       layoutId="bottom-nav-indicator"
-                      className="absolute inset-0 bg-pink-50/80 rounded-xl -z-10"
-                      transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                      className="absolute inset-0 bg-pink-50/90 rounded-full -z-10"
+                      transition={{ type: "spring", stiffness: 450, damping: 30 }}
                     />
                   )}
                   <item.icon
-                    className={`w-6 h-6 transition-all duration-300 ${
+                    className={`w-5 h-5 transition-all duration-300 ${
                       isActive ? "scale-110" : ""
                     }`}
                     strokeWidth={isActive ? 2.5 : 2}
                   />
-                  <span className={`text-[10px] tracking-tight transition-all duration-300 font-medium ${isActive ? "opacity-100" : "opacity-70"}`}>
-                    {item.label}
-                  </span>
+                  {isActive && (
+                    <span className="text-[9px] tracking-tight transition-all duration-300 font-bold opacity-100">
+                      {item.label}
+                    </span>
+                  )}
                 </motion.div>
               )}
             </NavLink>

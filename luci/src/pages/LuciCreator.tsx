@@ -362,16 +362,15 @@ export default function LuciCreator() {
                       <span className="text-gray-700 font-medium">{log}</span>
                     </motion.div>
                   ))}
-                  {status !== "done" && (
-                    <motion.div 
-                      initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ repeat: Infinity, duration: 1 }}
-                      className="flex gap-1 ml-7 mt-1.5"
-                    >
-                      <div className="w-1.5 h-1.5 bg-pink-400 rounded-full" />
-                      <div className="w-1.5 h-1.5 bg-pink-400 rounded-full animation-delay-200" />
-                      <div className="w-1.5 h-1.5 bg-pink-400 rounded-full animation-delay-400" />
-                    </motion.div>
-                  )}
+                  
+                  <motion.div 
+                    initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ repeat: Infinity, duration: 1 }}
+                    className="flex gap-1 ml-7 mt-1.5"
+                  >
+                    <div className="w-1.5 h-1.5 bg-pink-400 rounded-full" />
+                    <div className="w-1.5 h-1.5 bg-pink-400 rounded-full animation-delay-200" />
+                    <div className="w-1.5 h-1.5 bg-pink-400 rounded-full animation-delay-400" />
+                  </motion.div>
                 </div>
               </motion.div>
             )}

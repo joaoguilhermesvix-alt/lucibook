@@ -5,14 +5,8 @@ import Modal from "../components/Modal";
 export default function Services() {
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  // Mock data
-  const services = [
-    { id: 1, name: "Volume Clássico", price: 120.0, duration: "2h" },
-    { id: 2, name: "Volume Brasileiro", price: 140.0, duration: "2h 30m" },
-    { id: 3, name: "Volume Egípcio", price: 150.0, duration: "2h 30m" },
-    { id: 4, name: "Volume Russo", price: 180.0, duration: "3h" },
-    { id: 5, name: "Efeito Fox", price: 160.0, duration: "2h 30m" },
-  ];
+  // Mock data - starting empty
+  const [services, setServices] = useState<any[]>([]);
 
   const handleSaveService = (e: React.FormEvent) => {
     e.preventDefault();
@@ -40,42 +34,52 @@ export default function Services() {
         </button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {services.map((service) => (
-          <div
-            key={service.id}
-            className="glass-panel p-6 hover:bg-white/70 transition-colors"
-          >
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-12 h-12 rounded-2xl bg-pink-100 flex items-center justify-center text-pink-600">
-                <Scissors className="w-6 h-6" />
-              </div>
-              <h3 className="font-semibold text-gray-800 text-lg">
-                {service.name}
-              </h3>
-            </div>
-
-            <div className="space-y-2">
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-gray-500 flex items-center gap-1">
-                  <DollarSign className="w-4 h-4" /> Valor
-                </span>
-                <span className="font-medium text-gray-800">
-                  R$ {service.price.toFixed(2)}
-                </span>
-              </div>
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-gray-500 flex items-center gap-1">
-                  <Clock className="w-4 h-4" /> Duração
-                </span>
-                <span className="font-medium text-gray-800">
-                  {service.duration}
-                </span>
-              </div>
-            </div>
+      {services.length === 0 ? (
+        <div className="flex flex-col items-center justify-center p-12 glass-panel mt-6">
+          <div className="w-16 h-16 bg-pink-50 rounded-full flex items-center justify-center mb-4">
+            <Scissors className="w-8 h-8 text-pink-400" />
           </div>
-        ))}
-      </div>
+          <h3 className="text-xl font-semibold text-gray-800">Nenhum serviço</h3>
+          <p className="text-gray-500 mt-2 text-center max-w-sm">Você ainda não tem serviços cadastrados. Adicione-os para começar a gerenciar sua agenda!</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {services.map((service) => (
+            <div
+              key={service.id}
+              className="glass-panel p-6 hover:bg-white/70 transition-colors"
+            >
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-12 h-12 rounded-2xl bg-pink-100 flex items-center justify-center text-pink-600">
+                  <Scissors className="w-6 h-6" />
+                </div>
+                <h3 className="font-semibold text-gray-800 text-lg">
+                  {service.name}
+                </h3>
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-gray-500 flex items-center gap-1">
+                    <DollarSign className="w-4 h-4" /> Valor
+                  </span>
+                  <span className="font-medium text-gray-800">
+                    R$ {service.price.toFixed(2)}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-gray-500 flex items-center gap-1">
+                    <Clock className="w-4 h-4" /> Duração
+                  </span>
+                  <span className="font-medium text-gray-800">
+                    {service.duration}
+                  </span>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       <Modal
         isOpen={isModalOpen}
