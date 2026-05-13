@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { DollarSign, TrendingUp, CreditCard, Wallet, Loader2, TrendingDown, Plus, Tag } from "lucide-react";
 import Modal from "../components/Modal";
 import { db, auth, handleFirestoreError, OperationType } from "../firebase";
-import { collection, query, onSnapshot, addDoc } from "firebase/firestore";
+import { collection, query, onSnapshot, addDoc, deleteDoc, updateDoc, doc } from "firebase/firestore";
 import { onAuthStateChanged } from "firebase/auth";
 
 export default function Finance() {
@@ -15,6 +15,63 @@ export default function Finance() {
   const [expenseDescription, setExpenseDescription] = useState("");
   const [expenseValue, setExpenseValue] = useState("");
   const [expenseDate, setExpenseDate] = useState(new Date().toISOString().split('T')[0]);
+
+  // Edit/Delete State
+  const [editingTx, setEditingTx] = useState<any>(null);
+  const [editType, setEditType] = useState<"expense" | "income" | null>(null);
+  
+  const [deletingTx, setDeletingTx] = useState<any>(null);
+
+  const handleDelete = async () => {
+    if (!deletingTx) return;
+    try {
+      if (deletingTx.type === "expense") {
+        await deleteDoc(doc(db, "expenses", deletingTx.id));
+      } else {
+        await deleteDoc(doc(db, "appointments", deletingTx.id));
+      }
+      setDeletingTx(null);
+    } catch (error) {
+      handleFirestoreError(error, OperationType.DELETE, `${deletingTx.type}s/${deletingTx.id}`);
+    }
+  };
+
+  const handleEditSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingTx) return;
+
+    try {
+      if (editType === "expense") {
+        await updateDoc(doc(db, "expenses", editingTx.id), {
+          description: expenseDescription,
+          value: parseFloat(expenseValue),
+          date: expenseDate,
+        });
+      } else if (editType === "income") {
+        await updateDoc(doc(db, "appointments", editingTx.id), {
+           price: parseFloat(expenseValue),
+           status: expenseDescription // Reusing this for status
+        });
+      }
+      setEditingTx(null);
+      setEditType(null);
+    } catch (error) {
+      handleFirestoreError(error, OperationType.UPDATE, `${editType}s/${editingTx.id}`);
+    }
+  };
+
+  const openEdit = (tx: any) => {
+    setEditingTx(tx);
+    setEditType(tx.type);
+    if (tx.type === "expense") {
+       setExpenseDescription(tx.description);
+       setExpenseValue(tx.value.toString());
+       setExpenseDate(tx.date || tx.createdAt?.split('T')[0]);
+    } else {
+       setExpenseDescription(tx.status); // mapping status to description input
+       setExpenseValue((tx.price || 0).toString());
+    }
+  };
 
   useEffect(() => {
     let unsubscribeApps: () => void;
@@ -181,13 +238,14 @@ export default function Finance() {
                    <th className="pb-3 font-medium">Data</th>
                    <th className="pb-3 font-medium">Status / Tipo</th>
                    <th className="pb-3 font-medium text-right">Valor</th>
+                   <th className="pb-3 font-medium text-right">Ações</th>
                 </tr>
              </thead>
              <tbody className="text-sm">
                 {loading ? (
-                   <tr><td colSpan={4} className="py-10 text-center"><Loader2 className="w-8 h-8 animate-spin text-[var(--accent)] mx-auto" /></td></tr>
+                   <tr><td colSpan={5} className="py-10 text-center"><Loader2 className="w-8 h-8 animate-spin text-[var(--accent)] mx-auto" /></td></tr>
                 ) : allTransactions.length === 0 ? (
-                   <tr><td colSpan={4} className="py-10 text-center text-sub">Nenhum lançamento encontrado.</td></tr>
+                   <tr><td colSpan={5} className="py-10 text-center text-sub">Nenhum lançamento encontrado.</td></tr>
                 ) : (
                    allTransactions.map(tx => (
                       <tr key={tx.id} className="border-b border-gray-100 last:border-0 hover:bg-white/40 transition-colors">
@@ -217,6 +275,12 @@ export default function Finance() {
                          <td className={`py-4 text-right font-bold ${tx.type === "income" ? "text-green-600" : "text-red-500"}`}>
                             {tx.type === "income" ? "+" : "-"} R$ {(tx.price || tx.value || 0).toFixed(2)}
                          </td>
+                         <td className="py-4 text-right">
+                           <div className="flex justify-end gap-2">
+                             <button onClick={() => openEdit(tx)} className="text-blue-500 hover:text-blue-700 text-xs font-semibold px-2 py-1 bg-blue-50 rounded-lg">Editar</button>
+                             <button onClick={() => setDeletingTx(tx)} className="text-red-500 hover:text-red-700 text-xs font-semibold px-2 py-1 bg-red-50 rounded-lg">Excluir</button>
+                           </div>
+                         </td>
                       </tr>
                    ))
                 )}
@@ -224,6 +288,22 @@ export default function Finance() {
           </table>
         </div>
       </div>
+
+      {/* Excluir Modal */}
+      <Modal isOpen={!!deletingTx} onClose={() => setDeletingTx(null)} title="Excluir Lançamento">
+        <div className="space-y-4">
+          <p className="text-gray-700">Tem certeza que deseja excluir este lançamento?</p>
+          <p className="text-sm font-medium text-red-600 bg-red-50 p-3 rounded-xl border border-red-100">Essa ação não pode ser desfeita e refletirá para todos.</p>
+          <div className="flex gap-3 pt-2">
+            <button onClick={() => setDeletingTx(null)} className="flex-1 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold rounded-xl transition-colors">
+              Cancelar
+            </button>
+            <button onClick={handleDelete} className="flex-1 py-3 bg-red-500 hover:bg-red-600 text-white font-bold rounded-xl transition-colors">
+              Confirmar Exclusão
+            </button>
+          </div>
+        </div>
+      </Modal>
 
       <Modal isOpen={isExpenseModalOpen} onClose={() => setIsExpenseModalOpen(false)} title="Registrar Gasto de Material">
          <form onSubmit={handleAddExpense} className="space-y-4">
@@ -241,6 +321,43 @@ export default function Finance() {
             </div>
             <button type="submit" className="btn-action w-full bg-red-500 hover:bg-red-600 text-white border-0 mt-4 h-12 rounded-xl font-bold">
                Adicionar Despesa
+            </button>
+         </form>
+      </Modal>
+      <Modal isOpen={!!editingTx} onClose={() => { setEditingTx(null); setEditType(null); }} title="Editar Lançamento">
+         <form onSubmit={handleEditSubmit} className="space-y-4">
+            {editType === "expense" ? (
+              <>
+                 <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Descrição</label>
+                    <input type="text" required value={expenseDescription} onChange={(e) => setExpenseDescription(e.target.value)} className="w-full px-4 py-3 bg-white/50 border border-white/60 rounded-2xl outline-none focus:ring-2 focus:ring-blue-300" />
+                 </div>
+                 <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Valor (R$)</label>
+                    <input type="number" step="0.01" required value={expenseValue} onChange={(e) => setExpenseValue(e.target.value)} className="w-full px-4 py-3 bg-white/50 border border-white/60 rounded-2xl outline-none focus:ring-2 focus:ring-blue-300" />
+                 </div>
+                 <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Data</label>
+                    <input type="date" required value={expenseDate} onChange={(e) => setExpenseDate(e.target.value)} className="w-full px-4 py-3 bg-white/50 border border-white/60 rounded-2xl outline-none focus:ring-2 focus:ring-blue-300" />
+                 </div>
+              </>
+            ) : (
+              <>
+                 <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Status do Pagamento</label>
+                    <select required value={expenseDescription} onChange={(e) => setExpenseDescription(e.target.value)} className="w-full px-4 py-3 bg-white/50 border border-white/60 rounded-2xl outline-none focus:ring-2 focus:ring-blue-300">
+                      <option value="agendado">Pendente</option>
+                      <option value="concluido">Recebido</option>
+                    </select>
+                 </div>
+                 <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Valor (R$)</label>
+                    <input type="number" step="0.01" required value={expenseValue} onChange={(e) => setExpenseValue(e.target.value)} className="w-full px-4 py-3 bg-white/50 border border-white/60 rounded-2xl outline-none focus:ring-2 focus:ring-blue-300" />
+                 </div>
+              </>
+            )}
+            <button type="submit" className="btn-action w-full bg-blue-500 hover:bg-blue-600 text-white border-0 mt-4 h-12 rounded-xl font-bold">
+               Salvar Alterações
             </button>
          </form>
       </Modal>

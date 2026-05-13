@@ -30,8 +30,9 @@ export default function Layout() {
     { to: "/appointments", icon: List, label: "Agenda" },
     { to: "/finance", icon: DollarSign, label: "Financeiro" },
     { to: "/inventory", icon: Package, label: "Estoque" },
-    { to: "/services", icon: Settings, label: "Serviços" },
+    { to: "/services", icon: Layers, label: "Serviços" },
     { to: "/lucichat", icon: MessageSquareHeart, label: "LuciChat" },
+    { to: "/settings", icon: Settings, label: "Config." },
   ];
 
   return (

@@ -1,4 +1,3 @@
-import "dotenv/config";
 import express from "express";
 import { createServer as createViteServer } from "vite";
 import path from "node:path";
@@ -47,7 +46,7 @@ async function startServer() {
 
       const ai = getAiClient();
       if (!ai) {
-        return res.status(500).json({ error: "GEMINI_API_KEY is not configured on the backend." });
+         return res.status(500).json({ error: "GEMINI_API_KEY is not configured on the backend." });
       }
 
       const prompt = `
@@ -95,12 +94,12 @@ async function startServer() {
     } catch (err: any) {
       const isApiKeyError = err.message?.includes("API key not valid") || err.message?.includes("API_KEY_INVALID") || err.status === 400 || err.status === 403;
       if (isApiKeyError) {
-        console.error("Gemini warning (Analyze Face): A chave de API providenciada é inválida ou expirou.");
-        return res.status(500).json({ error: "Ocorreu um erro com a API Key do Gemini. Por favor, acesse o menu de Configurações (Settings) > Secrets no AI Studio e APAGUE (delete) a variável GEMINI_API_KEY para que o sistema use a chave nativa." });
+         console.error("Gemini warning (Analyze Face): A chave de API providenciada é inválida ou expirou.");
+         return res.status(500).json({ error: "Ocorreu um erro com a API Key do Gemini. Por favor, acesse o menu de Configurações (Settings) > Secrets no AI Studio e APAGUE (delete) a variável GEMINI_API_KEY para que o sistema use a chave nativa." });
       }
 
       console.error("AI Analysis error:", err);
-
+      
       // Give a friendly error for the user
       return res.status(500).json({ error: "As matrizes da foto não foram reconhecidas perfeitamente para essa inteligência, tente mudar a iluminação ou aproxime mais." });
     }
@@ -110,10 +109,10 @@ async function startServer() {
   app.post("/api/lucichat", async (req, res) => {
     try {
       const { messages, systemContext } = req.body || {};
-
+      
       const ai = getAiClient();
       if (!ai) {
-        return res.status(500).json({ error: "GEMINI_API_KEY is not configured on the backend." });
+         return res.status(500).json({ error: "GEMINI_API_KEY is not configured on the backend." });
       }
 
       const systemMessage = `Você é a Luci, a assistente inteligente do aplicativo Luci Book.
@@ -184,24 +183,24 @@ REGRA CRÍTICA DE FORMATAÇÃO E ESCRITA:
 
     } catch (err: any) {
       const isApiKeyError = err.message?.includes("API key not valid") || err.message?.includes("API_KEY_INVALID") || err.status === 400 || err.status === 403;
-
+      
       if (isApiKeyError) {
         console.error("Gemini warning: A chave de API providenciada é inválida ou expirou.");
       } else {
         console.error("Gemini error:", err);
       }
-
+      
       let errorMessage = err.message || "Failed to communicate with Gemini";
-
+      
       if (isApiKeyError) {
         errorMessage = "A chave da API do Gemini informada é inválida ou expirou. Por favor, acesse o menu Configurações (Settings) > Secrets no AI Studio, e atualize a GEMINI_API_KEY ou apague para usar a padrão do sistema.";
       }
 
       if (!res.headersSent) {
-        res.status(500).json({ error: errorMessage, details: err });
+          res.status(500).json({ error: errorMessage, details: err });
       } else {
-        res.write(`data: ${JSON.stringify({ error: errorMessage })}\n\n`);
-        res.end();
+          res.write(`data: ${JSON.stringify({ error: errorMessage })}\n\n`);
+          res.end();
       }
     }
   });
