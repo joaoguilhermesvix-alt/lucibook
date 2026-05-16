@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { DayPicker } from "react-day-picker";
 import { format, isSameDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Plus, Clock, User, Scissors, Calendar as CalendarIcon, CheckCircle } from "lucide-react";
+import { Plus, Clock, User, Scissors, Calendar as CalendarIcon, CheckCircle, Search } from "lucide-react";
 import Modal from "../components/Modal";
 import "react-day-picker/dist/style.css";
 import { db, auth, handleFirestoreError, OperationType } from "../firebase";
@@ -23,24 +23,29 @@ export default function Dashboard() {
   const [startTime, setStartTime] = useState("12:00");
   const [endTime, setEndTime] = useState("14:00");
 
-  const servicesList = [
-    "Volume Clássico",
-    "Volume Brasileiro",
-    "Volume Egípcio",
-    "Volume Russo",
-    "Efeito Fox",
-  ];
+  const [showClientDropdown, setShowClientDropdown] = useState(false);
+  const [clientsList, setClientsList] = useState<any[]>([]);
+  const [servicesList, setServicesList] = useState<any[]>([]);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    let unsubscribeSnapshot: () => void;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setShowClientDropdown(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  useEffect(() => {
+    let unsubscribeApp: () => void;
+    let unsubscribeClients: () => void;
+    let unsubscribeServices: () => void;
 
     const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
       if (user) {
-        const q = query(
-          collection(db, "appointments")
-        );
-
-        unsubscribeSnapshot = onSnapshot(q, (snapshot) => {
+        unsubscribeApp = onSnapshot(query(collection(db, "appointments")), (snapshot) => {
           const apps = snapshot.docs.map((doc) => ({
             id: doc.id,
             ...doc.data(),
@@ -50,21 +55,45 @@ export default function Dashboard() {
             if (a.date !== b.date) return a.date.localeCompare(b.date);
             return a.startTime.localeCompare(b.startTime);
           });
-          
           setAppointments(apps);
-        }, (error) => {
-          handleFirestoreError(error, OperationType.LIST, "appointments");
-        });
+        }, (error) => handleFirestoreError(error, OperationType.LIST, "appointments"));
+
+        unsubscribeClients = onSnapshot(query(collection(db, "clients")), (snapshot) => {
+          setClientsList(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
+        }, (error) => handleFirestoreError(error, OperationType.LIST, "clients"));
+
+        unsubscribeServices = onSnapshot(query(collection(db, "services")), (snapshot) => {
+          const svcs = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })) as any[];
+          setServicesList(svcs);
+          if (svcs.length > 0 && !serviceName) {
+            setServiceName(svcs[0].name);
+            setPrice(svcs[0].price?.toString() || "");
+          }
+        }, (error) => handleFirestoreError(error, OperationType.LIST, "services"));
+
       } else {
         setAppointments([]);
+        setClientsList([]);
+        setServicesList([]);
       }
     });
 
     return () => {
       unsubscribeAuth();
-      if (unsubscribeSnapshot) unsubscribeSnapshot();
+      if (unsubscribeApp) unsubscribeApp();
+      if (unsubscribeClients) unsubscribeClients();
+      if (unsubscribeServices) unsubscribeServices();
     };
   }, []);
+
+  const handleServiceChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const val = e.target.value;
+    setServiceName(val);
+    const svc = servicesList.find((s: any) => s.name === val);
+    if (svc) {
+      setPrice(svc.price?.toString() || "");
+    }
+  };
 
   const handleSaveAppointment = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -264,16 +293,49 @@ export default function Dashboard() {
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Cliente
             </label>
-            <div className="relative">
+            <div className="relative" ref={dropdownRef}>
               <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
               <input
                 type="text"
                 required
                 value={clientName}
-                onChange={(e) => setClientName(e.target.value)}
-                className="w-full pl-10 pr-4 py-3 bg-white/50 border border-white/60 rounded-2xl focus:ring-2 focus:ring-pink-400 outline-none"
+                onChange={(e) => {
+                  setClientName(e.target.value);
+                  setShowClientDropdown(true);
+                }}
+                onFocus={() => setShowClientDropdown(true)}
+                className="w-full pl-10 pr-10 py-3 bg-white/50 border border-white/60 rounded-2xl focus:ring-2 focus:ring-pink-400 outline-none"
                 placeholder="Nome da cliente (ou busque)"
               />
+              <div 
+                className="absolute right-2 top-1/2 -translate-y-1/2 p-2 hover:bg-black/5 rounded-full cursor-pointer text-pink-500"
+                onClick={() => setShowClientDropdown(!showClientDropdown)}
+              >
+                <Search className="w-5 h-5" />
+              </div>
+              
+              {showClientDropdown && (
+                <div className="absolute top-full left-0 right-0 mt-1 max-h-48 overflow-y-auto bg-white border border-gray-100 rounded-xl shadow-lg z-50 p-2">
+                  {clientsList.length > 0 ? (
+                    clientsList
+                      .filter((c: any) => c.name.toLowerCase().includes(clientName.toLowerCase()))
+                      .map((c: any) => (
+                        <div 
+                           key={c.id} 
+                           className="px-4 py-3 hover:bg-pink-50 rounded-xl cursor-pointer text-gray-700 text-sm font-medium transition-colors"
+                           onClick={() => { setClientName(c.name); setShowClientDropdown(false); }}
+                           >
+                          {c.name}
+                        </div>
+                      ))
+                  ) : (
+                    <div className="p-3 text-sm text-gray-500 text-center">Nenhum cliente salvo.</div>
+                  )}
+                  {clientsList.filter((c: any) => c.name.toLowerCase().includes(clientName.toLowerCase())).length === 0 && clientsList.length > 0 && (
+                    <div className="p-3 text-sm text-gray-500 text-center">Nenhum cliente encontrado com esse nome.</div>
+                  )}
+                </div>
+              )}
             </div>
           </div>
 
@@ -285,13 +347,18 @@ export default function Dashboard() {
               <Scissors className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
               <select
                 value={serviceName}
-                onChange={(e) => setServiceName(e.target.value)}
+                onChange={handleServiceChange}
                 className="w-full pl-10 pr-4 py-3 bg-white/50 border border-white/60 rounded-2xl focus:ring-2 focus:ring-pink-400 outline-none appearance-none"
               >
-                {servicesList.map((s) => (
-                  <option key={s} value={s}>
-                    {s}
+                {servicesList.length === 0 && <option value="">Nenhum serviço salvo</option>}
+                {servicesList.map((s: any) => (
+                  <option key={s.id || s.name} value={s.name}>
+                    {s.name}
                   </option>
+                ))}
+                {/* Fallback mock if nothing is in db */}
+                {servicesList.length === 0 && ["Volume Clássico", "Volume Brasileiro", "Efeito Fox"].map(s => (
+                  <option key={s} value={s}>{s}</option>
                 ))}
               </select>
             </div>

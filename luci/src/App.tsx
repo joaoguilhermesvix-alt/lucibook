@@ -21,7 +21,6 @@ import Services from "./pages/Services";
 import LuciCreator from "./pages/LuciCreator";
 import ProLuci3D from "./pages/ProLuci3D";
 import SettingsPage from "./pages/Settings";
-import LuciChat from "./pages/LuciChat";
 import Layout from "./components/Layout";
 
 export default function App() {
@@ -70,7 +69,6 @@ export default function App() {
           <Route path="/finance" element={<Finance />} />
           <Route path="/inventory" element={<Inventory />} />
           <Route path="/services" element={<Services />} />
-          <Route path="/lucichat" element={<LuciChat />} />
           <Route path="/settings" element={<SettingsPage />} />
           {/* <Route path="/luci-creator" element={<LuciCreator />} /> */}
           {/* <Route path="/proluci-3d" element={<ProLuci3D />} /> */}

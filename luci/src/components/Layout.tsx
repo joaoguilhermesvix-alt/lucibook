@@ -8,8 +8,7 @@ import {
   LogOut,
   Sparkles,
   Layers,
-  Package,
-  MessageSquareHeart
+  Package
 } from "lucide-react";
 import { auth } from "../firebase";
 import { signOut } from "firebase/auth";
@@ -31,7 +30,6 @@ export default function Layout() {
     { to: "/finance", icon: DollarSign, label: "Financeiro" },
     { to: "/inventory", icon: Package, label: "Estoque" },
     { to: "/services", icon: Layers, label: "Serviços" },
-    { to: "/lucichat", icon: MessageSquareHeart, label: "LuciChat" },
     { to: "/settings", icon: Settings, label: "Config." },
   ];
 
@@ -60,7 +58,7 @@ export default function Layout() {
                 }`
               }
             >
-              <item.icon className={`w-[22px] h-[22px] ${item.to === "/lucichat" && "text-pink-400"}`} strokeWidth={2.3} />
+              <item.icon className="w-[22px] h-[22px]" strokeWidth={2.3} />
               {item.label}
             </NavLink>
           ))}

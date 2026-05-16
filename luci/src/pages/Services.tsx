@@ -1,17 +1,81 @@
-import React, { useState } from "react";
-import { Plus, Scissors, Clock, DollarSign } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { Plus, Scissors, Clock, DollarSign, Loader2, Trash2 } from "lucide-react";
 import Modal from "../components/Modal";
+import { db, auth, handleFirestoreError, OperationType } from "../firebase";
+import { collection, addDoc, query, onSnapshot, doc, deleteDoc } from "firebase/firestore";
+import { onAuthStateChanged } from "firebase/auth";
 
 export default function Services() {
   const [isModalOpen, setIsModalOpen] = useState(false);
-
-  // Mock data - starting empty
   const [services, setServices] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const handleSaveService = (e: React.FormEvent) => {
+  // Form state
+  const [name, setName] = useState("");
+  const [price, setPrice] = useState("");
+  const [duration, setDuration] = useState("");
+
+  const [deletingSvc, setDeletingSvc] = useState<any>(null);
+
+  useEffect(() => {
+    let unsubscribeSnapshot: () => void;
+
+    const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        const q = query(collection(db, "services"));
+        unsubscribeSnapshot = onSnapshot(q, (snapshot) => {
+          const svcs = snapshot.docs.map((doc) => ({
+            id: doc.id,
+            ...doc.data(),
+          })) as any[];
+          
+          svcs.sort((a, b) => a.name.localeCompare(b.name));
+          setServices(svcs);
+          setLoading(false);
+        }, (error) => {
+          handleFirestoreError(error, OperationType.LIST, "services");
+        });
+      } else {
+        setServices([]);
+        setLoading(false);
+      }
+    });
+
+    return () => {
+      unsubscribeAuth();
+      if (unsubscribeSnapshot) unsubscribeSnapshot();
+    };
+  }, []);
+
+  const handleSaveService = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!auth.currentUser) return;
     setIsModalOpen(false);
-    alert("Serviço salvo com sucesso!");
+
+    try {
+      await addDoc(collection(db, "services"), {
+        userId: auth.currentUser.uid,
+        name,
+        price: parseFloat(price),
+        duration,
+        createdAt: new Date().toISOString(),
+      });
+      setName("");
+      setPrice("");
+      setDuration("");
+    } catch (error) {
+      handleFirestoreError(error, OperationType.WRITE, "services");
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!deletingSvc) return;
+    try {
+      await deleteDoc(doc(db, "services", deletingSvc.id));
+      setDeletingSvc(null);
+    } catch (error) {
+      handleFirestoreError(error, OperationType.DELETE, `services/${deletingSvc.id}`);
+    }
   };
 
   return (
@@ -34,7 +98,11 @@ export default function Services() {
         </button>
       </div>
 
-      {services.length === 0 ? (
+      {loading ? (
+        <div className="flex justify-center p-12">
+          <Loader2 className="w-8 h-8 animate-spin text-[var(--accent)]" />
+        </div>
+      ) : services.length === 0 ? (
         <div className="flex flex-col items-center justify-center p-12 glass-panel mt-6">
           <div className="w-16 h-16 bg-pink-50 rounded-full flex items-center justify-center mb-4">
             <Scissors className="w-8 h-8 text-pink-400" />
@@ -53,9 +121,16 @@ export default function Services() {
                 <div className="w-12 h-12 rounded-2xl bg-pink-100 flex items-center justify-center text-pink-600">
                   <Scissors className="w-6 h-6" />
                 </div>
-                <h3 className="font-semibold text-gray-800 text-lg">
+                <h3 className="font-semibold text-gray-800 text-lg flex-1">
                   {service.name}
                 </h3>
+                <button
+                  onClick={() => setDeletingSvc(service)}
+                  className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-colors"
+                  title="Excluir serviço"
+                >
+                  <Trash2 className="w-5 h-5" />
+                </button>
               </div>
 
               <div className="space-y-2">
@@ -64,7 +139,7 @@ export default function Services() {
                     <DollarSign className="w-4 h-4" /> Valor
                   </span>
                   <span className="font-medium text-gray-800">
-                    R$ {service.price.toFixed(2)}
+                    R$ {(service.price || 0).toFixed(2)}
                   </span>
                 </div>
                 <div className="flex items-center justify-between text-sm">
@@ -72,7 +147,7 @@ export default function Services() {
                     <Clock className="w-4 h-4" /> Duração
                   </span>
                   <span className="font-medium text-gray-800">
-                    {service.duration}
+                    {service.duration} min
                   </span>
                 </div>
               </div>
@@ -80,6 +155,22 @@ export default function Services() {
           ))}
         </div>
       )}
+
+      {/* Excluir Modal */}
+      <Modal isOpen={!!deletingSvc} onClose={() => setDeletingSvc(null)} title="Excluir Serviço">
+        <div className="space-y-4">
+          <p className="text-gray-700">Tem certeza que deseja excluir o serviço <strong>{deletingSvc?.name}</strong>?</p>
+          <p className="text-sm font-medium text-red-600 bg-red-50 p-3 rounded-xl border border-red-100">Essa ação não pode ser desfeita.</p>
+          <div className="flex gap-3 pt-2">
+            <button onClick={() => setDeletingSvc(null)} className="flex-1 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold rounded-xl transition-colors">
+              Cancelar
+            </button>
+            <button onClick={handleDelete} className="flex-1 py-3 bg-red-500 hover:bg-red-600 text-white font-bold rounded-xl transition-colors">
+              Confirmar Exclusão
+            </button>
+          </div>
+        </div>
+      </Modal>
 
       <Modal
         isOpen={isModalOpen}
@@ -96,6 +187,8 @@ export default function Services() {
               <input
                 type="text"
                 required
+                value={name}
+                onChange={(e) => setName(e.target.value)}
                 className="w-full pl-10 pr-4 py-3 bg-white/50 border border-white/60 rounded-2xl focus:ring-2 focus:ring-pink-400 outline-none"
                 placeholder="Ex: Manutenção Volume Russo"
               />
@@ -112,6 +205,9 @@ export default function Services() {
                 <input
                   type="number"
                   required
+                  step="0.01"
+                  value={price}
+                  onChange={(e) => setPrice(e.target.value)}
                   className="w-full pl-10 pr-4 py-3 bg-white/50 border border-white/60 rounded-2xl focus:ring-2 focus:ring-pink-400 outline-none"
                   placeholder="0.00"
                 />
@@ -126,6 +222,8 @@ export default function Services() {
                 <input
                   type="number"
                   required
+                  value={duration}
+                  onChange={(e) => setDuration(e.target.value)}
                   className="w-full pl-10 pr-4 py-3 bg-white/50 border border-white/60 rounded-2xl focus:ring-2 focus:ring-pink-400 outline-none"
                   placeholder="Ex: 120"
                 />
