@@ -231,13 +231,18 @@ export default function Dashboard() {
     const start = `${app.date.replace(/-/g, "")}T${app.startTime.replace(":", "")}00`;
     const end = `${app.date.replace(/-/g, "")}T${app.endTime.replace(":", "")}00`;
     const title = `Cílios: ${app.clientName} - ${app.serviceName}`;
-    const icsContent = `BEGIN:VCALENDAR\nVERSION:2.0\nBEGIN:VEVENT\nSUMMARY:${title}\nDTSTART:${start}\nDTEND:${end}\nEND:VEVENT\nEND:VCALENDAR`;
     
-    // Support for iOS to open directly in Calendar app
-    if (navigator.userAgent.match(/ipad|iphone|ipod/i) && !(window as any).MSStream) {
-       window.location.href = `data:text/calendar;charset=utf-8,${encodeURIComponent(icsContent)}`;
-       return;
-    }
+    const icsContent = [
+      'BEGIN:VCALENDAR',
+      'VERSION:2.0',
+      'PRODID:-//LuciApp//PT',
+      'BEGIN:VEVENT',
+      `SUMMARY:${title}`,
+      `DTSTART:${start}`,
+      `DTEND:${end}`,
+      'END:VEVENT',
+      'END:VCALENDAR'
+    ].join('\r\n');
     
     const blob = new Blob([icsContent], { type: 'text/calendar;charset=utf-8' });
     const link = document.createElement('a');
@@ -381,9 +386,26 @@ export default function Dashboard() {
         onClose={() => { setIsModalOpen(false); setEditingApp(null); }}
         title={editingApp ? "Editar Agendamento" : "Novo Agendamento"}
       >
-        <form onSubmit={handleCreateOrUpdateApp} className="space-y-5">
-          <div className="bg-[var(--glass-darker)] p-3 rounded-xl mb-4 text-center text-sm font-medium text-main">
-            Data selecionada: {format(selectedDate, "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
+        <form onSubmit={handleCreateOrUpdateApp} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Data
+            </label>
+            <div className="relative">
+              <CalendarIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+              <input 
+                type="date"
+                required
+                value={format(selectedDate, "yyyy-MM-dd")}
+                onChange={(e) => {
+                  const parts = e.target.value.split('-');
+                  if (parts.length === 3) {
+                    setSelectedDate(new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2])));
+                  }
+                }}
+                className="w-full pl-10 pr-4 py-3 bg-white/50 border border-white/60 rounded-2xl focus:ring-2 focus:ring-pink-400 outline-none"
+              />
+            </div>
           </div>
             <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -474,7 +496,7 @@ export default function Dashboard() {
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Início

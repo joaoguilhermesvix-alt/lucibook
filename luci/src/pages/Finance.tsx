@@ -135,11 +135,21 @@ export default function Finance() {
     }
   };
 
+  const [transactionFilter, setTransactionFilter] = useState("all"); // 'all', 'income', 'expense'
+
   // Combine and sort ALL transactions
   const allTransactions = [...appointments, ...expenses].filter((tx) => {
       const dateStr = tx.date || tx.createdAt?.split('T')[0] || "";
-      if (!selectedMonth) return true; // Show all if no month selected
-      return dateStr.startsWith(selectedMonth);
+      let matchesMonth = true;
+      if (selectedMonth) {
+         matchesMonth = dateStr.startsWith(selectedMonth);
+      }
+      
+      let matchesType = true;
+      if (transactionFilter === "income") matchesType = tx.type === "income";
+      if (transactionFilter === "expense") matchesType = tx.type === "expense";
+      
+      return matchesMonth && matchesType;
   }).sort((a, b) => {
       const dateA = a.date || a.createdAt?.split('T')[0] || "";
       const dateB = b.date || b.createdAt?.split('T')[0] || "";
@@ -244,63 +254,76 @@ export default function Finance() {
       </div>
 
       <div className="glass-panel p-6">
-        <h3 className="text-xl font-semibold text-main mb-6">Últimos Lançamentos</h3>
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse min-w-[600px]">
-             <thead>
-                <tr className="border-b border-gray-200 text-sm text-gray-500">
-                   <th className="pb-3 font-medium">Lançamento</th>
-                   <th className="pb-3 font-medium">Data</th>
-                   <th className="pb-3 font-medium">Status / Tipo</th>
-                   <th className="pb-3 font-medium text-right">Valor</th>
-                   <th className="pb-3 font-medium text-right">Ações</th>
-                </tr>
-             </thead>
-             <tbody className="text-sm">
-                {loading ? (
-                   <tr><td colSpan={5} className="py-10 text-center"><Loader2 className="w-8 h-8 animate-spin text-[var(--accent)] mx-auto" /></td></tr>
-                ) : allTransactions.length === 0 ? (
-                   <tr><td colSpan={5} className="py-10 text-center text-sub">Nenhum lançamento encontrado.</td></tr>
-                ) : (
-                   allTransactions.map(tx => (
-                      <tr key={tx.id} className="border-b border-gray-100 last:border-0 hover:bg-white/40 transition-colors">
-                         <td className="py-4">
-                           {tx.type === "income" ? (
-                             <>
-                               <p className="font-semibold text-gray-800">{tx.clientName}</p>
-                               <p className="text-gray-500 text-xs">Atendimento: {tx.serviceName}</p>
-                             </>
-                           ) : (
-                             <>
-                               <p className="font-semibold text-gray-800">{tx.description}</p>
-                               <p className="text-gray-500 text-xs text-red-500">Gasto Material</p>
-                             </>
-                           )}
-                         </td>
-                         <td className="py-4 text-gray-600">{tx.date || tx.createdAt?.split('T')[0]}</td>
-                         <td className="py-4">
-                            {tx.type === "income" ? (
-                               <span className={`pill-tag ${tx.status === "concluido" ? "bg-green-100 text-green-700" : "bg-yellow-100 text-yellow-700"}`}>
-                                 {tx.status === "concluido" ? "Recebido" : "Pendente"}
-                               </span>
-                            ) : (
-                               <span className="pill-tag bg-red-100 text-red-700">Despesa Paga</span>
-                            )}
-                         </td>
-                         <td className={`py-4 text-right font-bold ${tx.type === "income" ? "text-green-600" : "text-red-500"}`}>
-                            {tx.type === "income" ? "+" : "-"} R$ {(tx.price || tx.value || 0).toFixed(2)}
-                         </td>
-                         <td className="py-4 text-right">
-                           <div className="flex justify-end gap-2">
-                             <button onClick={() => openEdit(tx)} className="text-blue-500 hover:text-blue-700 text-xs font-semibold px-2 py-1 bg-blue-50 rounded-lg">Editar</button>
-                             <button onClick={() => setDeletingTx(tx)} className="text-red-500 hover:text-red-700 text-xs font-semibold px-2 py-1 bg-red-50 rounded-lg">Excluir</button>
-                           </div>
-                         </td>
-                      </tr>
-                   ))
-                )}
-             </tbody>
-          </table>
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+          <h3 className="text-xl font-semibold text-main">
+            Lançamentos
+          </h3>
+          <div className="flex bg-white/50 p-1 rounded-xl border border-white/60">
+            <button 
+              onClick={() => setTransactionFilter("all")}
+              className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors flex-1 text-center ${transactionFilter === 'all' ? 'bg-white shadow-sm text-gray-800' : 'text-gray-500 hover:text-gray-700'}`}
+            >
+              Todos
+            </button>
+            <button 
+              onClick={() => setTransactionFilter("income")}
+              className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors flex-1 text-center ${transactionFilter === 'income' ? 'bg-white shadow-sm text-green-600' : 'text-gray-500 hover:text-gray-700'}`}
+            >
+              Receitas
+            </button>
+            <button 
+              onClick={() => setTransactionFilter("expense")}
+              className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors flex-1 text-center ${transactionFilter === 'expense' ? 'bg-white shadow-sm text-red-600' : 'text-gray-500 hover:text-gray-700'}`}
+            >
+              Despesas
+            </button>
+          </div>
+        </div>
+
+        <div className="space-y-3">
+          {loading ? (
+             <div className="py-10 text-center"><Loader2 className="w-8 h-8 animate-spin text-[var(--accent)] mx-auto" /></div>
+          ) : allTransactions.length === 0 ? (
+            <div className="py-8 text-center text-gray-500">
+              Nenhum lançamento encontrado para este filtro.
+            </div>
+          ) : (
+            allTransactions.map((tx) => (
+             <div key={tx.id} className="bg-white/40 border border-white/60 p-4 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-all hover:bg-white/60">
+                <div className="flex items-center gap-4">
+                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${tx.type === "expense" ? "bg-red-100 text-red-500" : "bg-green-100 text-green-500"}`}>
+                    {tx.type === "expense" ? <TrendingDown className="w-5 h-5" /> : <TrendingUp className="w-5 h-5" />}
+                  </div>
+                  <div>
+                    <div className="font-semibold text-gray-800">
+                       {tx.type === "expense" ? tx.description : `${tx.clientName} - ${tx.serviceName}`}
+                    </div>
+                    <div className="text-xs text-gray-500 flex items-center gap-2 mt-1">
+                       <span>{tx.date ? new Date(tx.date).toLocaleDateString('pt-BR', { timeZone: 'UTC' }) : new Date(tx.createdAt).toLocaleDateString('pt-BR')}</span>
+                       <span>•</span>
+                       {tx.type === "expense" ? (
+                         <span className="text-red-500 font-medium">Gasto Material</span>
+                       ) : (
+                         <span className={tx.status === 'concluido' ? 'text-green-500 font-medium' : 'text-yellow-600 font-medium'}>
+                           {tx.status === 'concluido' ? 'Recebido' : 'Pendente'}
+                         </span>
+                       )}
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="flex items-center justify-between sm:justify-end gap-4 w-full sm:w-auto mt-2 sm:mt-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-gray-100">
+                  <div className={`font-bold ${tx.type === "expense" ? "text-red-500" : "text-green-500"} text-lg`}>
+                    {tx.type === "expense" ? "-" : "+"}R$ {(tx.price || tx.value || 0).toFixed(2)}
+                  </div>
+                  <div className="flex gap-2">
+                    <button onClick={() => openEdit(tx)} className="text-blue-500 hover:text-blue-700 text-xs font-semibold px-3 py-1.5 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors">Editar</button>
+                    <button onClick={() => setDeletingTx(tx)} className="text-red-500 hover:text-red-700 text-xs font-semibold px-3 py-1.5 bg-red-50 hover:bg-red-100 rounded-lg transition-colors">Excluir</button>
+                  </div>
+                </div>
+             </div>
+            ))
+          )}
         </div>
       </div>
 
