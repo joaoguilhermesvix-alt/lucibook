@@ -10,6 +10,7 @@ export default function Finance() {
   const [expenses, setExpenses] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isExpenseModalOpen, setIsExpenseModalOpen] = useState(false);
+  const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7)); // YYYY-MM
 
   // Expense Form
   const [expenseDescription, setExpenseDescription] = useState("");
@@ -135,7 +136,11 @@ export default function Finance() {
   };
 
   // Combine and sort ALL transactions
-  const allTransactions = [...appointments, ...expenses].sort((a, b) => {
+  const allTransactions = [...appointments, ...expenses].filter((tx) => {
+      const dateStr = tx.date || tx.createdAt?.split('T')[0] || "";
+      if (!selectedMonth) return true; // Show all if no month selected
+      return dateStr.startsWith(selectedMonth);
+  }).sort((a, b) => {
       const dateA = a.date || a.createdAt?.split('T')[0] || "";
       const dateB = b.date || b.createdAt?.split('T')[0] || "";
       if (dateA !== dateB) return dateB.localeCompare(dateA);
@@ -145,16 +150,18 @@ export default function Finance() {
       return timeB.localeCompare(timeA);
   });
 
-  // Calculate stats
-  const received = appointments
-    .filter(app => app.status === "concluido")
-    .reduce((sum, app) => sum + (app.price || 0), 0);
+  // Calculate stats based on filtered transactions
+  const received = allTransactions
+    .filter(tx => tx.type === "income" && tx.status === "concluido")
+    .reduce((sum, tx) => sum + (tx.price || 0), 0);
     
-  const toReceive = appointments
-    .filter(app => app.status === "agendado")
-    .reduce((sum, app) => sum + (app.price || 0), 0);
+  const toReceive = allTransactions
+    .filter(tx => tx.type === "income" && tx.status === "agendado")
+    .reduce((sum, tx) => sum + (tx.price || 0), 0);
 
-  const totalExpenses = expenses.reduce((sum, exp) => sum + (exp.value || 0), 0);
+  const totalExpenses = allTransactions
+    .filter(tx => tx.type === "expense")
+    .reduce((sum, tx) => sum + (tx.value || 0), 0);
     
   const total = received + toReceive - totalExpenses;
 
@@ -169,13 +176,21 @@ export default function Finance() {
             Ganhos e gastos com materiais.
           </p>
         </div>
-        <button
-          onClick={() => setIsExpenseModalOpen(true)}
-          className="btn-action bg-red-50 text-red-600 border-red-200 hover:bg-red-100 flex items-center gap-2"
-        >
-          <TrendingDown className="w-5 h-5" />
-          Registrar Gasto
-        </button>
+        <div className="flex flex-col sm:flex-row w-full md:w-auto items-stretch sm:items-center gap-3">
+          <input 
+            type="month" 
+            value={selectedMonth}
+            onChange={(e) => setSelectedMonth(e.target.value)}
+            className="w-full sm:w-auto px-4 py-2 border border-gray-200 rounded-xl bg-white/70 text-gray-700 font-medium outline-none focus:ring-2 focus:ring-pink-300"
+          />
+          <button
+            onClick={() => setIsExpenseModalOpen(true)}
+            className="btn-action bg-red-50 text-red-600 border-red-200 hover:bg-red-100 flex items-center gap-2 justify-center"
+          >
+            <TrendingDown className="w-5 h-5" />
+            Registrar Gasto
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">

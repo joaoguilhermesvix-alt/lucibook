@@ -6,7 +6,7 @@ import { Plus, Clock, User, Scissors, Calendar as CalendarIcon, CheckCircle, Sea
 import Modal from "../components/Modal";
 import "react-day-picker/dist/style.css";
 import { db, auth, handleFirestoreError, OperationType } from "../firebase";
-import { collection, addDoc, query, where, onSnapshot, orderBy, doc, updateDoc } from "firebase/firestore";
+import { collection, addDoc, query, where, onSnapshot, orderBy, doc, updateDoc, deleteDoc } from "firebase/firestore";
 
 import { onAuthStateChanged } from "firebase/auth";
 
@@ -15,6 +15,8 @@ export default function Dashboard() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [appointments, setAppointments] = useState<any[]>([]);
   const [savedAppointment, setSavedAppointment] = useState<any>(null);
+  const [deletingAppId, setDeletingAppId] = useState<string | null>(null);
+  const [editingApp, setEditingApp] = useState<any>(null);
 
   // Form state
   const [clientName, setClientName] = useState("");
@@ -146,6 +148,71 @@ export default function Dashboard() {
     }
   };
 
+  const handleCreateOrUpdateApp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!auth.currentUser) return;
+
+    // Use selectedDate for new, or the specific date string for editing. If editing across days, use selectedDate. 
+    // To allow rescheduling across days, we'll bind a date picker state if editing... 
+    // Actually, simply using `selectedDate` state should work. When we "Open Edit", we set selectedDate.
+    const dateStr = format(selectedDate, "yyyy-MM-dd");
+
+    const appData = {
+      clientName,
+      serviceName,
+      price: parseFloat(price),
+      date: dateStr,
+      startTime,
+      endTime,
+    };
+
+    try {
+      if (editingApp) {
+         await updateDoc(doc(db, "appointments", editingApp.id), appData);
+      } else {
+         await addDoc(collection(db, "appointments"), {
+             userId: auth.currentUser.uid,
+             ...appData,
+             status: "agendado",
+             createdAt: new Date().toISOString(),
+         });
+      }
+      
+      setIsModalOpen(false);
+      setEditingApp(null);
+      setClientName("");
+      setPrice("");
+      setStartTime("12:00");
+      setEndTime("14:00");
+    } catch (error) {
+      handleFirestoreError(error, editingApp ? OperationType.UPDATE : OperationType.WRITE, "appointments");
+    }
+  };
+
+  const openEditApp = (app: any) => {
+      setEditingApp(app);
+      setClientName(app.clientName);
+      setServiceName(app.serviceName);
+      setPrice(app.price.toString());
+      setStartTime(app.startTime);
+      setEndTime(app.endTime);
+      
+      // Parse the app date
+      const [year, month, day] = app.date.split('-');
+      setSelectedDate(new Date(parseInt(year), parseInt(month) - 1, parseInt(day)));
+      setIsModalOpen(true);
+  };
+
+  const cancelAppointment = async () => {
+     if (!deletingAppId) return;
+     try {
+        await deleteDoc(doc(db, "appointments", deletingAppId));
+        setDeletingAppId(null);
+     } catch (error) {
+        handleFirestoreError(error, OperationType.DELETE, `appointments/${deletingAppId}`);
+     }
+  };
+
   const getGoogleCalendarUrl = (app: any) => {
     const start = `${app.date.replace(/-/g, "")}T${app.startTime.replace(":", "")}00`;
     const end = `${app.date.replace(/-/g, "")}T${app.endTime.replace(":", "")}00`;
@@ -165,6 +232,12 @@ export default function Dashboard() {
     const end = `${app.date.replace(/-/g, "")}T${app.endTime.replace(":", "")}00`;
     const title = `Cílios: ${app.clientName} - ${app.serviceName}`;
     const icsContent = `BEGIN:VCALENDAR\nVERSION:2.0\nBEGIN:VEVENT\nSUMMARY:${title}\nDTSTART:${start}\nDTEND:${end}\nEND:VEVENT\nEND:VCALENDAR`;
+    
+    // Support for iOS to open directly in Calendar app
+    if (navigator.userAgent.match(/ipad|iphone|ipod/i) && !(window as any).MSStream) {
+       window.location.href = `data:text/calendar;charset=utf-8,${encodeURIComponent(icsContent)}`;
+       return;
+    }
     
     const blob = new Blob([icsContent], { type: 'text/calendar;charset=utf-8' });
     const link = document.createElement('a');
@@ -191,7 +264,11 @@ export default function Dashboard() {
           </p>
         </div>
         <button
-          onClick={() => setIsModalOpen(true)}
+          onClick={() => {
+            setEditingApp(null);
+            setClientName("");
+            setIsModalOpen(true);
+          }}
           className="btn-action flex items-center gap-2"
         >
           <Plus className="w-5 h-5" />
@@ -257,7 +334,26 @@ export default function Dashboard() {
                     </div>
                   </div>
                   <div className="text-right flex flex-col items-end gap-2">
-                    <p className="font-medium text-main">R$ {app.price.toFixed(2)}</p>
+                    <div className="flex items-center gap-3">
+                      <p className="font-medium text-main">R$ {app.price.toFixed(2)}</p>
+                      
+                      {app.status === "agendado" && (
+                         <div className="flex items-center gap-1 border-l border-gray-200 pl-3">
+                           <button 
+                             onClick={() => openEditApp(app)}
+                             className="text-xs text-blue-500 hover:text-blue-700 bg-blue-50 hover:bg-blue-100 px-2 py-1 rounded transition-colors"
+                           >
+                             Editar
+                           </button>
+                           <button 
+                             onClick={() => setDeletingAppId(app.id)}
+                             className="text-xs text-red-500 hover:text-red-700 bg-red-50 hover:bg-red-100 px-2 py-1 rounded transition-colors"
+                           >
+                             Cancelar
+                           </button>
+                         </div>
+                      )}
+                    </div>
                     {app.status === "agendado" ? (
                       <button
                         onClick={() => handleMarkAsConcluded(app.id)}
@@ -282,10 +378,10 @@ export default function Dashboard() {
 
         <Modal
         isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        title="Novo Agendamento"
+        onClose={() => { setIsModalOpen(false); setEditingApp(null); }}
+        title={editingApp ? "Editar Agendamento" : "Novo Agendamento"}
       >
-        <form onSubmit={handleSaveAppointment} className="space-y-5">
+        <form onSubmit={handleCreateOrUpdateApp} className="space-y-5">
           <div className="bg-[var(--glass-darker)] p-3 rounded-xl mb-4 text-center text-sm font-medium text-main">
             Data selecionada: {format(selectedDate, "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
           </div>
@@ -444,9 +540,24 @@ export default function Dashboard() {
             type="submit"
             className="btn-action w-full flex justify-center items-center mt-4"
           >
-            Salvar Agendamento
+            {editingApp ? "Salvar Alterações" : "Salvar Agendamento"}
           </button>
         </form>
+      </Modal>
+
+      <Modal isOpen={!!deletingAppId} onClose={() => setDeletingAppId(null)} title="Cancelar Agendamento">
+        <div className="space-y-4">
+          <p className="text-gray-700">Tem certeza que deseja cancelar e excluir este agendamento?</p>
+          <p className="text-sm font-medium text-red-600 bg-red-50 p-3 rounded-xl border border-red-100">Essa ação não pode ser desfeita.</p>
+          <div className="flex gap-3 pt-2">
+            <button onClick={() => setDeletingAppId(null)} className="flex-1 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold rounded-xl transition-colors">
+              Voltar
+            </button>
+            <button onClick={cancelAppointment} className="flex-1 py-3 bg-red-500 hover:bg-red-600 text-white font-bold rounded-xl transition-colors">
+              Excluir
+            </button>
+          </div>
+        </div>
       </Modal>
     </div>
   );
