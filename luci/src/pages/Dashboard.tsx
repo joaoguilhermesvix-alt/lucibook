@@ -327,32 +327,32 @@ export default function Dashboard() {
               todaysAppointments.map((app) => (
                 <div
                   key={app.id}
-                  className="glass-panel-darker p-4 flex items-center justify-between"
+                  className="glass-panel-darker p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4"
                 >
-                  <div className="flex items-center gap-4">
-                    <div className="bg-[var(--glass)] text-[var(--accent)] font-bold px-3 py-2 rounded-xl text-center min-w-[70px]">
+                  <div className="flex items-center gap-4 w-full sm:w-auto">
+                    <div className="bg-[var(--glass)] text-[var(--accent)] font-bold px-3 py-2 rounded-xl text-center shrink-0 min-w-[70px]">
                       {app.startTime}
                     </div>
-                    <div>
-                      <h4 className="font-semibold text-main">{app.clientName}</h4>
-                      <p className="text-sm text-sub">{app.serviceName}</p>
+                    <div className="min-w-0 pr-2 flex-1">
+                      <h4 className="font-semibold text-main truncate">{app.clientName}</h4>
+                      <p className="text-sm text-sub truncate">{app.serviceName}</p>
                     </div>
                   </div>
-                  <div className="text-right flex flex-col items-end gap-2">
-                    <div className="flex items-center gap-3">
-                      <p className="font-medium text-main">R$ {app.price.toFixed(2)}</p>
+                  <div className="flex flex-col sm:items-end gap-3 w-full sm:w-auto pt-3 sm:pt-0 border-t sm:border-t-0 border-gray-200/50">
+                    <div className="flex items-center justify-between sm:justify-end gap-3 w-full sm:w-auto">
+                      <p className="font-medium text-main shrink-0">R$ {app.price.toFixed(2)}</p>
                       
                       {app.status === "agendado" && (
-                         <div className="flex items-center gap-1 border-l border-gray-200 pl-3">
+                         <div className="flex items-center gap-2 border-l border-gray-200 pl-3 shrink-0">
                            <button 
                              onClick={() => openEditApp(app)}
-                             className="text-xs text-blue-500 hover:text-blue-700 bg-blue-50 hover:bg-blue-100 px-2 py-1 rounded transition-colors"
+                             className="text-xs font-semibold text-blue-500 hover:text-blue-700 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-lg transition-colors"
                            >
                              Editar
                            </button>
                            <button 
                              onClick={() => setDeletingAppId(app.id)}
-                             className="text-xs text-red-500 hover:text-red-700 bg-red-50 hover:bg-red-100 px-2 py-1 rounded transition-colors"
+                             className="text-xs font-semibold text-red-500 hover:text-red-700 bg-red-50 hover:bg-red-100 px-3 py-1.5 rounded-lg transition-colors"
                            >
                              Cancelar
                            </button>
@@ -362,14 +362,14 @@ export default function Dashboard() {
                     {app.status === "agendado" ? (
                       <button
                         onClick={() => handleMarkAsConcluded(app.id)}
-                        className="flex items-center gap-1 text-xs bg-white/50 hover:bg-green-100 text-green-600 px-2 py-1 rounded-lg transition-colors border border-green-200"
+                        className="flex items-center justify-center gap-1.5 text-xs font-semibold bg-white/50 hover:bg-green-100 text-green-600 px-3 py-1.5 rounded-lg transition-colors border border-green-200 w-full sm:w-auto"
                       >
-                        <CheckCircle className="w-3 h-3" />
+                        <CheckCircle className="w-4 h-4" />
                         Concluir
                       </button>
                     ) : (
-                      <span className="text-xs text-green-600 font-medium flex items-center gap-1">
-                        <CheckCircle className="w-3 h-3" />
+                      <span className="text-xs font-medium bg-green-50 text-green-700 px-3 py-1.5 rounded-lg flex items-center justify-center gap-1.5 w-full sm:w-auto border border-green-100">
+                        <CheckCircle className="w-4 h-4" />
                         Concluído
                       </span>
                     )}
